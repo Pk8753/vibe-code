@@ -9,12 +9,17 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
+// Memoize these to prevent recreation on each render
+const nodeTypes = {};
+const edgeTypes = {};
+
 const FlowDiagram = ({ analysis }) => {
   // Build nodes and edges from analysis data
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const nodes = [];
     const edges = [];
     const nodeMap = new Map();
+    const edgeIds = new Set(); // Track edge IDs to ensure uniqueness
 
     // Limit to top 50 files for performance
     const files = analysis.file_structure.slice(0, 50);
@@ -49,7 +54,7 @@ const FlowDiagram = ({ analysis }) => {
       const sourceId = nodeMap.get(filePath);
       if (!sourceId) return;
 
-      imports.forEach((importPath) => {
+      imports.forEach((importPath, importIdx) => {
         // Try to find matching file
         const matchingFile = files.find(
           (f) =>
@@ -59,18 +64,24 @@ const FlowDiagram = ({ analysis }) => {
 
         if (matchingFile) {
           const targetId = matchingFile.id;
-          edges.push({
-            id: `${sourceId}-${targetId}`,
-            source: sourceId,
-            target: targetId,
-            type: "default",
-            animated: true,
-            style: { stroke: "#667eea", strokeWidth: 2 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: "#667eea",
-            },
-          });
+          const edgeId = `${sourceId}-${targetId}-${importIdx}`;
+          
+          // Only add if not already added
+          if (!edgeIds.has(edgeId)) {
+            edgeIds.add(edgeId);
+            edges.push({
+              id: edgeId,
+              source: sourceId,
+              target: targetId,
+              type: "default",
+              animated: true,
+              style: { stroke: "#667eea", strokeWidth: 2 },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: "#667eea",
+              },
+            });
+          }
         }
       });
     });
