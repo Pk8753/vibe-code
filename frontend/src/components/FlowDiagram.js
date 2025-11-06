@@ -105,6 +105,8 @@ const FlowDiagram = ({ analysis }) => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
       >
         <Controls />
