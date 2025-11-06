@@ -134,41 +134,55 @@ def find_entry_points(repo_path: Path) -> List[str]:
     """Find entry points in the repository"""
     entry_points = []
     
-    # Common entry point files
+    # Check package.json scripts first (most reliable for JS/TS projects)
+    package_json = repo_path / "package.json"
+    if package_json.exists():
+        try:
+            with open(package_json, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                scripts = data.get('scripts', {})
+                if 'start' in scripts:
+                    entry_points.append(f"npm start")
+                if 'dev' in scripts:
+                    entry_points.append(f"npm run dev")
+                if 'build' in scripts:
+                    entry_points.append(f"npm run build")
+                    
+                # Check main field
+                if 'main' in data:
+                    entry_points.append(f"Entry: {data['main']}")
+        except Exception as e:
+            pass
+    
+    # Common entry point files at root
     common_entries = [
         'index.js', 'index.ts', 'index.jsx', 'index.tsx',
         'main.py', 'app.py', 'server.py', 'manage.py',
         'main.go', 'main.java', 'Main.java',
-        'index.html', 'App.js', 'App.tsx'
+        'index.html'
     ]
     
     for entry in common_entries:
         if (repo_path / entry).exists():
             entry_points.append(entry)
     
-    # Check package.json scripts
-    package_json = repo_path / "package.json"
-    if package_json.exists():
-        try:
-            with open(package_json, 'r') as f:
-                data = json.load(f)
-                scripts = data.get('scripts', {})
-                if 'start' in scripts:
-                    entry_points.append(f"npm start: {scripts['start']}")
-                if 'dev' in scripts:
-                    entry_points.append(f"npm run dev: {scripts['dev']}")
-        except:
-            pass
-    
-    # Check for src directory
+    # Check for src directory entries
     src_dir = repo_path / "src"
     if src_dir.exists():
-        for entry in common_entries:
+        src_entries = ['index.js', 'index.ts', 'index.jsx', 'index.tsx', 'App.js', 'App.tsx', 'main.py', 'main.go']
+        for entry in src_entries:
             src_entry = src_dir / entry
-            if src_entry.exists() and entry not in entry_points:
-                entry_points.append(f"src/{entry}")
+            if src_entry.exists():
+                rel_name = f"src/{entry}"
+                if rel_name not in entry_points and entry not in entry_points:
+                    entry_points.append(rel_name)
     
-    return entry_points
+    # Check for public/index.html (common in React apps)
+    public_index = repo_path / "public" / "index.html"
+    if public_index.exists():
+        entry_points.append("public/index.html")
+    
+    return entry_points if entry_points else ["No entry points detected"]
 
 def parse_imports_python(file_path: Path) -> List[str]:
     """Parse Python file for imports"""
