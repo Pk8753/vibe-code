@@ -60,23 +60,48 @@ def detect_framework(repo_path: Path) -> Optional[str]:
     """Detect the framework used in the repository"""
     frameworks = []
     
-    # Check for React
+    # Check for JavaScript frameworks via package.json
     package_json = repo_path / "package.json"
     if package_json.exists():
         try:
-            with open(package_json, 'r') as f:
+            with open(package_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 deps = {**data.get('dependencies', {}), **data.get('devDependencies', {})}
-                if 'react' in deps:
-                    frameworks.append('React')
-                if 'vue' in deps:
-                    frameworks.append('Vue')
-                if 'angular' in deps or '@angular/core' in deps:
-                    frameworks.append('Angular')
+                
+                # Check for Next.js first (superset of React)
                 if 'next' in deps:
                     frameworks.append('Next.js')
-        except:
+                # Check for React
+                elif 'react' in deps or 'react-dom' in deps:
+                    frameworks.append('React')
+                    
+                # Check for Vue
+                if 'vue' in deps:
+                    frameworks.append('Vue')
+                    
+                # Check for Angular
+                if 'angular' in deps or '@angular/core' in deps:
+                    frameworks.append('Angular')
+                    
+                # Check for Svelte
+                if 'svelte' in deps:
+                    frameworks.append('Svelte')
+        except Exception as e:
             pass
+    
+    # Check for React via src files if not found in package.json
+    if not frameworks:
+        src_dir = repo_path / "src"
+        if src_dir.exists():
+            for file in src_dir.rglob('*.js*'):
+                try:
+                    with open(file, 'r', encoding='utf-8') as f:
+                        content = f.read(100)  # Read first 100 chars
+                        if 'react' in content.lower() or 'import React' in content:
+                            frameworks.append('React')
+                            break
+                except:
+                    pass
     
     # Check for Python frameworks
     requirements_txt = repo_path / "requirements.txt"
